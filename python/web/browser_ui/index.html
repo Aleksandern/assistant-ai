@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AssistantAI Browser UI</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel panel-header">
+        <h1>AssistantAI</h1>
+        <p id="status" class="status">Connecting...</p>
+      </section>
+
+      <nav class="panel tab-nav" aria-label="Browser UI sections">
+        <button id="tab-button-convs" class="tab-button tab-button-active" type="button">convs</button>
+__TASK_TAB_BUTTON__
+      </nav>
+
+      <section id="error-panel" class="panel panel-error panel-hidden">
+        <h2>Error</h2>
+        <div id="error-text" class="text-block error-screen" aria-live="polite"></div>
+      </section>
+
+      <section id="tab-panel-convs" class="tab-panel">
+        <section class="panel panel-terminal">
+          <h2>Conversation</h2>
+          <div id="conversation-log" class="text-block terminal-screen" aria-live="polite"></div>
+        </section>
+      </section>
+
+__TASK_TAB_PANEL__
+    </main>
+
+    <script>
+      window.BROWSER_UI_CONFIG = __BROWSER_UI_CONFIG__;
+    </script>
+    <script src="/app.js"></script>
+  </body>
+</html>

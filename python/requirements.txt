@@ -1,0 +1,6 @@
+numpy
+openai
+pyobjc-core
+pyobjc-framework-ScreenCaptureKit
+silero-vad
+websockets
