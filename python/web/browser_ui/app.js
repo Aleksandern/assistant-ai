@@ -18,6 +18,7 @@
   const taskPreviewListEl = document.getElementById("task-preview-list");
   const taskResultTextEl = document.getElementById("task-result-text");
   const taskErrorTextEl = document.getElementById("task-error-text");
+  const taskPromptInputEl = document.getElementById("task-prompt-input");
   const taskActionScreenshotEl = document.getElementById("task-action-screenshot");
   const taskActionSendEl = document.getElementById("task-action-send");
   const taskActionClearEl = document.getElementById("task-action-clear");
@@ -485,8 +486,15 @@
     if (!taskFeatureEnabled || taskActionPending) {
       return;
     }
+    let requestBody = null;
     if (actionName === "send") {
       clearTaskLatestResult();
+      const taskPrompt = taskPromptInputEl ? String(taskPromptInputEl.value || "").trim() : "";
+      if (taskPrompt) {
+        requestBody = JSON.stringify({
+          task_prompt: taskPrompt,
+        });
+      }
     }
     taskActionPending = true;
     syncTaskActionButtons();
@@ -495,6 +503,8 @@
     try {
       const response = await fetch("/api/task/" + encodeURIComponent(actionName), {
         method: "POST",
+        headers: requestBody ? { "Content-Type": "application/json" } : undefined,
+        body: requestBody,
       });
       if (!response.ok) {
         throw new Error("Task action request failed with status " + response.status + ".");

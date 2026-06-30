@@ -50,7 +50,7 @@ class BrowserUiRuntime:
         database_path: str | Path | None = None,
         task_feature_enabled: bool = True,
         on_task_screenshot: Callable[[], object] | None = None,
-        on_task_send: Callable[[], object] | None = None,
+        on_task_send: Callable[[str | None], object] | None = None,
         on_task_clear: Callable[[], object] | None = None,
     ) -> None:
         self._host = self._require_non_empty_text("host", host)

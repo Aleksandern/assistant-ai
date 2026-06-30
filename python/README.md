@@ -265,6 +265,8 @@ OPENAI_TASK_SOLVER_PROMPT="..."
 - Shared OpenAI env parsing now lives in `python/modules/openai_env_config.py`
   so the OpenAI modules use one consistent `.env` loading and validation path
 - `api_key=...` can still be passed explicitly by orchestrators when needed
+- In browser UI task mode, the `task` tab can override `OPENAI_TASK_SOLVER_PROMPT`
+  for one send action; when the textarea is empty, the `.env` value is still used
 
 ## SQLite Conversation Store Module
 

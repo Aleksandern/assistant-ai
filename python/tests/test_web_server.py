@@ -59,6 +59,7 @@ class WebServerTests(unittest.TestCase):
         self.assertIn('id="task-status-value"', response.text)
         self.assertIn('id="task-file-count-value"', response.text)
         self.assertIn('id="task-artifacts-list"', response.text)
+        self.assertIn('id="task-prompt-input"', response.text)
         self.assertIn('id="task-action-screenshot"', response.text)
         self.assertIn('id="task-action-send"', response.text)
         self.assertIn('id="task-action-clear"', response.text)
@@ -88,6 +89,7 @@ class WebServerTests(unittest.TestCase):
         self.assertIn('id="tab-button-task"', response.text)
         self.assertIn('id="tab-panel-task"', response.text)
         self.assertIn('id="task-artifacts-list"', response.text)
+        self.assertIn('id="task-prompt-input"', response.text)
         self.assertIn('id="task-action-screenshot"', response.text)
         self.assertIn('"task_feature_enabled": true', response.text)
 
@@ -104,13 +106,29 @@ class WebServerTests(unittest.TestCase):
         self.assertIn('"action": "screenshot"', response.text)
 
     def test_task_action_send_route_calls_handler_and_returns_json(self) -> None:
-        calls: list[str] = []
-        server = self._start_server(on_task_send=lambda: calls.append("send"))
+        calls: list[str | None] = []
+        server = self._start_server(on_task_send=lambda task_prompt=None: calls.append(task_prompt))
+
+        response = self._request(
+            server,
+            "POST",
+            "/api/task/send",
+            body=b'{"task_prompt":"Answer in German."}',
+            headers={"Content-Type": "application/json"},
+        )
+
+        self.assertEqual(200, response.status)
+        self.assertEqual(["Answer in German."], calls)
+        self.assertIn('"action": "send"', response.text)
+
+    def test_task_action_send_route_passes_none_when_prompt_is_missing(self) -> None:
+        calls: list[str | None] = []
+        server = self._start_server(on_task_send=lambda task_prompt=None: calls.append(task_prompt))
 
         response = self._request(server, "POST", "/api/task/send")
 
         self.assertEqual(200, response.status)
-        self.assertEqual(["send"], calls)
+        self.assertEqual([None], calls)
         self.assertIn('"action": "send"', response.text)
 
     def test_task_action_clear_route_calls_handler_and_returns_json(self) -> None:
@@ -147,7 +165,7 @@ class WebServerTests(unittest.TestCase):
         self.assertIn("boom", response.text)
 
     def test_task_action_route_returns_500_json_when_handler_raises_non_runtime_error(self) -> None:
-        server = self._start_server(on_task_send=lambda: (_ for _ in ()).throw(ValueError("bad input")))
+        server = self._start_server(on_task_send=lambda _task_prompt=None: (_ for _ in ()).throw(ValueError("bad input")))
 
         response = self._request(server, "POST", "/api/task/send")
 
@@ -357,11 +375,12 @@ class WebServerTests(unittest.TestCase):
         method: str,
         path: str,
         *,
+        body: bytes | None = None,
         headers: dict[str, str] | None = None,
     ) -> "_HttpResponse":
         connection = http.client.HTTPConnection("127.0.0.1", server.bound_port, timeout=5)
         try:
-            connection.request(method, path, headers=headers or {})
+            connection.request(method, path, body=body, headers=headers or {})
             response = connection.getresponse()
             body = response.read()
             headers = {key: value for key, value in response.getheaders()}

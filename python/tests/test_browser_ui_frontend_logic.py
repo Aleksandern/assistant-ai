@@ -425,6 +425,41 @@ class BrowserUiFrontendLogicTests(unittest.TestCase):
             task_feature_enabled=True,
         )
 
+    def test_send_action_includes_task_prompt_json_body_when_textarea_is_filled(self) -> None:
+        self._run_node_assertions(
+            """
+            elements["task-prompt-input"].value = "Solve in Kotlin.";
+            elements["tab-button-task"].click();
+            elements["task-action-send"].click();
+
+            assert.equal(fetchCalls.length, 1);
+            assert.equal(fetchCalls[0].url, "/api/task/send");
+            assert.equal(fetchCalls[0].options.method, "POST");
+            assert.equal(fetchCalls[0].options.headers["Content-Type"], "application/json");
+            assert.equal(fetchCalls[0].options.body, JSON.stringify({ task_prompt: "Solve in Kotlin." }));
+
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            """,
+            task_feature_enabled=True,
+        )
+
+    def test_send_action_omits_request_body_when_task_prompt_textarea_is_blank(self) -> None:
+        self._run_node_assertions(
+            """
+            elements["task-prompt-input"].value = "   ";
+            elements["tab-button-task"].click();
+            elements["task-action-send"].click();
+
+            assert.equal(fetchCalls.length, 1);
+            assert.equal(fetchCalls[0].url, "/api/task/send");
+            assert.equal(fetchCalls[0].options.method, "POST");
+            assert.equal(fetchCalls[0].options.body, null);
+
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            """,
+            task_feature_enabled=True,
+        )
+
     def test_task_preview_uses_artifact_path_filename_when_id_is_opaque(self) -> None:
         self._run_node_assertions(
             """
@@ -604,6 +639,7 @@ class BrowserUiFrontendLogicTests(unittest.TestCase):
                 id,
                 innerHTML: options.innerHTML || "",
                 textContent: options.textContent || "",
+                value: options.value || "",
                 disabled: Boolean(options.disabled),
                 classList: createClassList(options.classes || []),
                 attributes: new Map(),
@@ -649,6 +685,7 @@ class BrowserUiFrontendLogicTests(unittest.TestCase):
               elements["task-preview-list"] = createElement("task-preview-list");
               elements["task-result-text"] = createElement("task-result-text");
               elements["task-error-text"] = createElement("task-error-text");
+              elements["task-prompt-input"] = createElement("task-prompt-input");
               elements["task-action-screenshot"] = createElement("task-action-screenshot");
               elements["task-action-send"] = createElement("task-action-send");
               elements["task-action-clear"] = createElement("task-action-clear");

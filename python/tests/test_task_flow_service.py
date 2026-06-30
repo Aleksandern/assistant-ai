@@ -177,6 +177,32 @@ class TaskFlowServiceTests(unittest.TestCase):
         self.assertFalse(any(self.task_dir.iterdir()))
         self.assertEqual(self.transport.messages[-1], self.publisher.task_snapshot_provider())
 
+    def test_solve_current_task_passes_task_prompt_override_to_solver(self) -> None:
+        self._create_task_artifact("screen-1.png", b"first")
+        observed_task_prompts: list[str | None] = []
+
+        def fake_solver(screenshots: list[Path], **kwargs: object) -> TaskOpenAISolveResult:
+            observed_task_prompts.append(kwargs.get("task_prompt"))
+            self.assertEqual(1, len(screenshots))
+            return TaskOpenAISolveResult(
+                response_text="TypeScript solution",
+                source_file_count=1,
+            )
+
+        with patch(
+            "modules.task_flow_service.solve_task_from_screenshots",
+            side_effect=fake_solver,
+        ):
+            snapshot = solve_current_task(
+                publisher=self.publisher,
+                task_artifact_dir=self.task_dir,
+                database_path=self.database_path,
+                task_prompt="Use Rust.",
+            )
+
+        self.assertEqual(["Use Rust."], observed_task_prompts)
+        self.assertEqual("complete", snapshot.status)
+
     def test_solve_current_task_success_cleanup_removes_all_task_owned_contents(self) -> None:
         self._create_task_artifact("screen-1.png", b"first")
         notes_path = self._create_task_file("notes.txt", b"remove")

@@ -360,13 +360,14 @@ def main(argv: list[str] | None = None) -> int:
                     task_artifact_dir=None,
                     database_path=args.database_path,
                 )
-                runtime_kwargs["on_task_send"] = lambda: solve_current_task(
+                runtime_kwargs["on_task_send"] = lambda task_prompt=None: solve_current_task(
                     publisher=runtime_publisher_holder["publisher"],
                     task_artifact_dir=None,
                     database_path=args.database_path,
                     api_key=args.openai_api_key,
                     model=args.openai_model,
                     dotenv_path=args.openai_dotenv_path,
+                    task_prompt=task_prompt,
                 )
                 runtime_kwargs["on_task_clear"] = lambda: clear_current_task(
                     publisher=runtime_publisher_holder["publisher"],

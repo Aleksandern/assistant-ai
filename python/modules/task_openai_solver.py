@@ -48,6 +48,7 @@ def solve_task_from_screenshots(
     api_key: str | None = None,
     model: str | None = None,
     dotenv_path: str | Path | None = None,
+    task_prompt: str | None = None,
 ) -> TaskOpenAISolveResult:
     normalized_screenshot_paths = _normalize_screenshot_paths(screenshots)
 
@@ -58,7 +59,10 @@ def solve_task_from_screenshots(
         raise ValueError("Model name must not be empty.")
 
     openai_client = client or _build_openai_client(api_key=api_key)
-    request_input = _build_request_input(normalized_screenshot_paths)
+    request_input = _build_request_input(
+        normalized_screenshot_paths,
+        task_prompt=task_prompt,
+    )
 
     try:
         response = openai_client.responses.create(
@@ -115,11 +119,15 @@ def _extract_screenshot_path(screenshot: ScreenshotInput) -> str | Path:
     return path_value
 
 
-def _build_request_input(screenshot_paths: Sequence[Path]) -> list[dict[str, object]]:
+def _build_request_input(
+    screenshot_paths: Sequence[Path],
+    *,
+    task_prompt: str | None,
+) -> list[dict[str, object]]:
     content: list[dict[str, object]] = [
         {
             "type": "input_text",
-            "text": _resolve_task_prompt(),
+            "text": _resolve_task_prompt(task_prompt=task_prompt),
         }
     ]
     for screenshot_path in screenshot_paths:
@@ -169,7 +177,12 @@ def _resolve_model_name(*, model: str | None) -> str:
     return DEFAULT_OPENAI_MODEL
 
 
-def _resolve_task_prompt() -> str:
+def _resolve_task_prompt(*, task_prompt: str | None) -> str:
+    if task_prompt is not None:
+        normalized_task_prompt = task_prompt.strip()
+        if normalized_task_prompt:
+            return normalized_task_prompt
+
     return get_required_str_env(
         OPENAI_TASK_SOLVER_PROMPT_ENV_VAR,
         guidance="Set it in the repository-root `.env` file.",

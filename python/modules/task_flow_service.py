@@ -74,6 +74,7 @@ def solve_current_task(
     api_key: str | None = None,
     model: str | None = None,
     dotenv_path: str | Path | None = None,
+    task_prompt: str | None = None,
 ) -> TaskFlowSnapshot:
     screenshot_paths = list_task_artifacts(task_artifact_dir)
     if not screenshot_paths:
@@ -93,6 +94,7 @@ def solve_current_task(
             api_key=api_key,
             model=model,
             dotenv_path=dotenv_path,
+            task_prompt=task_prompt,
         )
     except Exception as exc:
         return publish_current_task_snapshot(

@@ -15,6 +15,10 @@ class TaskActionHandler(Protocol):
     def __call__(self) -> object: ...
 
 
+class TaskSendActionHandler(Protocol):
+    def __call__(self, task_prompt: str | None) -> object: ...
+
+
 class WebServer:
     """Small synchronous wrapper around a threaded HTTP server."""
 
@@ -28,7 +32,7 @@ class WebServer:
         task_artifact_dir: str | Path | None = None,
         task_feature_enabled: bool = True,
         on_task_screenshot: TaskActionHandler | None = None,
-        on_task_send: TaskActionHandler | None = None,
+        on_task_send: TaskSendActionHandler | None = None,
         on_task_clear: TaskActionHandler | None = None,
     ) -> None:
         self._host = host
@@ -133,7 +137,9 @@ class WebServer:
 
             def do_POST(self) -> None:  # noqa: N802
                 try:
-                    status, body = server_owner._handle_post_request(self.path)
+                    content_length = int(self.headers.get("Content-Length", "0") or "0")
+                    request_body = self.rfile.read(content_length) if content_length > 0 else b""
+                    status, body = server_owner._handle_post_request(self.path, request_body=request_body)
                     self._respond(status, body, "application/json; charset=utf-8")
                 except FileNotFoundError:
                     self._respond(HTTPStatus.NOT_FOUND, b'{"error":"Not Found"}', "application/json; charset=utf-8")
@@ -184,6 +190,16 @@ class WebServer:
             <button id="task-action-clear" class="task-action-button" type="button">clear</button>
           </div>
 
+          <div class="task-section">
+            <h3>Task Prompt</h3>
+            <textarea
+              id="task-prompt-input"
+              class="task-prompt-input"
+              rows="4"
+              placeholder="If empty, OPENAI_TASK_SOLVER_PROMPT will be used."
+            ></textarea>
+          </div>
+
           <dl class="task-summary">
             <div class="task-summary-row">
               <dt>Status</dt>
@@ -222,7 +238,7 @@ class WebServer:
             .replace("__TASK_TAB_PANEL__", rendered_task_panel)
         )
 
-    def _handle_post_request(self, request_path: str) -> tuple[HTTPStatus, bytes]:
+    def _handle_post_request(self, request_path: str, *, request_body: bytes) -> tuple[HTTPStatus, bytes]:
         if not self._task_feature_enabled:
             raise FileNotFoundError("Task feature is disabled.")
 
@@ -234,7 +250,11 @@ class WebServer:
         if handler is None:
             raise RuntimeError(f"Task action handler is not configured for: {action}")
 
-        handler()
+        if action == "send":
+            task_prompt = self._resolve_task_send_prompt(request_body)
+            handler(task_prompt)
+        else:
+            handler()
         response_body = json.dumps(
             {
                 "ok": True,
@@ -318,11 +338,32 @@ class WebServer:
             return "clear"
         return None
 
+    def _resolve_task_send_prompt(self, request_body: bytes) -> str | None:
+        if not request_body:
+            return None
+
+        try:
+            payload = json.loads(request_body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise RuntimeError("Task send request body must be valid JSON.") from error
+
+        if not isinstance(payload, dict):
+            raise RuntimeError("Task send request body must be a JSON object.")
+
+        task_prompt = payload.get("task_prompt")
+        if task_prompt is None:
+            return None
+        if not isinstance(task_prompt, str):
+            raise RuntimeError("task_prompt must be a string when provided.")
+
+        normalized_task_prompt = task_prompt.strip()
+        return normalized_task_prompt or None
+
     def _require_optional_handler(
         self,
         field_name: str,
-        handler: TaskActionHandler | None,
-    ) -> TaskActionHandler | None:
+        handler: object | None,
+    ) -> object | None:
         if handler is None:
             return None
         if not callable(handler):

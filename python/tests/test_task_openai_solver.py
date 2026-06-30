@@ -132,6 +132,20 @@ class TaskOpenAISolverTests(unittest.TestCase):
         self.assertEqual(self.default_task_solver_prompt, content[0]["text"])
         self.assertIn("TypeScript solution", content[0]["text"])
 
+    def test_solve_task_from_screenshots_uses_explicit_task_prompt_override_when_provided(self) -> None:
+        screenshot_path = self._create_screenshot("override-prompt.png")
+        client = FakeOpenAIClient(response_text="Answer")
+
+        solve_task_from_screenshots(
+            [screenshot_path],
+            client=client,
+            model="gpt-5-mini",
+            task_prompt="Answer in Polish and keep it short.",
+        )
+
+        content = client.recorded_request["input"][0]["content"]
+        self.assertEqual("Answer in Polish and keep it short.", content[0]["text"])
+
     def test_solve_task_from_screenshots_reads_prompt_from_dotenv_file(self) -> None:
         screenshot_path = self._create_screenshot("dotenv-prompt.png")
         dotenv_prompt = "Recover the problem from the screenshots and answer in English."
@@ -152,6 +166,20 @@ class TaskOpenAISolverTests(unittest.TestCase):
 
         self.assertEqual("Configured prompt reply", result.response_text)
         self.assertEqual(dotenv_prompt, client.recorded_request["input"][0]["content"][0]["text"])
+
+    def test_solve_task_from_screenshots_falls_back_to_env_prompt_when_explicit_task_prompt_is_blank(self) -> None:
+        screenshot_path = self._create_screenshot("blank-override-prompt.png")
+        client = FakeOpenAIClient(response_text="Answer")
+
+        solve_task_from_screenshots(
+            [screenshot_path],
+            client=client,
+            model="gpt-5-mini",
+            task_prompt="   ",
+        )
+
+        content = client.recorded_request["input"][0]["content"]
+        self.assertEqual(self.default_task_solver_prompt, content[0]["text"])
 
     def test_solve_task_from_screenshots_reads_model_from_dotenv_file(self) -> None:
         screenshot_path = self._create_screenshot("dotenv.png")
